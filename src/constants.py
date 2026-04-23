@@ -9,7 +9,7 @@ PATHS = {
     "gameshow": r"..\Gameshow\Data_gameshow.csv",
     "output_train": r"..\DB_tiktok\tiktok_train.csv",
     "output_val": r"..\DB_tiktok\tiktok_validate.csv",
-    "output_result": r"..\Result\Result.csv"
+    "output_result": r"..\Result\Result_100_42.csv"
 }
 
 # Regex cho Emoji
@@ -22,9 +22,22 @@ EMOJI_PATTERN = re.compile(
 
 # Danh sách feature dùng để train model
 FEATURES = [
-    "emoji_count", "has_trend_keyword", "has_trend_hashtag", 
-    "has_trend_song", "is_related_gameshow", "time", "is_weekend"
+    "caption_length",
+    "word_count",
+    "emoji_count",
+    "hashtag_count",
+    "followers_log1p",
+    "has_trend_keyword",
+    "has_trend_hashtag", 
+    "has_trend_song", 
+    "is_related_gameshow", 
+    "time", 
+    "is_weekend"
 ]
 
 # Các cột mục tiêu (Target)
-TARGETS = ["likes_log1p", "views_log1p", "shares_log1p"]
+TARGETS = [
+    "likes_log1p", 
+    "views_log1p", 
+    "shares_log1p"
+]
