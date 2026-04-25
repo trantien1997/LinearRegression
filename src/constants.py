@@ -12,7 +12,7 @@ PATHS = {
     "output_result": r"..\Result\Result_100_42.csv"
 }
 
-# Regex cho Emoji
+# Regex pattern to match emojis in text
 EMOJI_PATTERN = re.compile(
     r"[\U0001F600-\U0001F64F\U0001F300-\U0001F5FF\U0001F680-\U0001F6FF"
     r"\U0001F1E0-\U0001F1FF\U00002700-\U000027BF\U0001F900-\U0001F9FF"
@@ -20,7 +20,7 @@ EMOJI_PATTERN = re.compile(
     flags=re.UNICODE
 )
 
-# Danh sách feature dùng để train model
+# List of feature columns to be used for training
 FEATURES = [
     "caption_length",
     "word_count",
@@ -35,7 +35,7 @@ FEATURES = [
     "is_weekend"
 ]
 
-# Các cột mục tiêu (Target)
+# Objective targets
 TARGETS = [
     "likes_log1p",
     "views_log1p",

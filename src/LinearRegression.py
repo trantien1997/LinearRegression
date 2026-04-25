@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 
-from sklearn.model_selection import train_test_split, LinearRegression
+from sklearn.model_selection import train_test_split, GridSearchCV
 from sklearn.linear_model import Ridge
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
@@ -51,13 +51,31 @@ def main():
             # pipeline
             pipeline = Pipeline([
                 ("scaler", StandardScaler()),
-                ("lr", LinearRegression())
+                ("ridge", Ridge())
             ])
 
-            pipeline.fit(X_train, y_train)
+            # hyperparameter search space
+            param_grid = {
+                "ridge__alpha": [0.1, 1, 10, 50, 100]
+            }
+
+            # grid search
+            grid = GridSearchCV(
+                estimator=pipeline,
+                param_grid=param_grid,
+                cv=5,
+                scoring="r2",
+                n_jobs=-1
+            )
+
+            grid.fit(X_train, y_train)
+
+            best_model = grid.best_estimator_
+
+            print("Best params:", grid.best_params_)
 
             # predict
-            y_pred_log = pipeline.predict(X_val)
+            y_pred_log = best_model.predict(X_val)
 
             # inverse transform
             y_pred = np.expm1(y_pred_log)

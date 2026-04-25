@@ -36,8 +36,6 @@ class TikTokDataProcessor:
     def process_features(self, df):
         df = df.copy()
         df["emoji_count"] = df["caption"].apply(count_emojis)
-        
-        # Tối ưu tốc độ bằng cách check set thay vì loop
         df["has_trend_keyword"] = df["caption_clean"].apply(lambda x: 1 if any(kw in normalize_text(x) for kw in self.trend_keywords if kw) else 0)
         df["has_trend_hashtag"] = df["hashtag_str"].apply(lambda x: 1 if any(ht in normalize_text(x) for ht in self.trend_hashtags if ht) else 0)
         df["has_trend_song"] = df["music_name"].apply(lambda x: 1 if normalize_text(x) in self.trend_songs else 0)
