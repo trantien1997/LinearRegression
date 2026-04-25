@@ -26,7 +26,7 @@ FEATURES = [
     "word_count",
     "emoji_count",
     "hashtag_count",
-    "followers_log1p",
+    "followers",
     "has_trend_keyword",
     "has_trend_hashtag", 
     "has_trend_song", 
@@ -37,7 +37,7 @@ FEATURES = [
 
 # Các cột mục tiêu (Target)
 TARGETS = [
-    "likes_log1p", 
-    "views_log1p", 
+    "likes_log1p",
+    "views_log1p",
     "shares_log1p"
 ]
