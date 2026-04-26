@@ -10,7 +10,9 @@ PATHS = {
     "kol_to_gameshow": r"..\Gameshow\kol_to_gameshows.csv",
     "output_train": r"..\DB_tiktok\tiktok_train.csv",
     "output_val": r"..\DB_tiktok\tiktok_validate.csv",
-    "output_result": r"..\Result\Result.csv"
+    "output_result_xgboost": r"..\Result\Result_xgboost.csv",
+    "output_result_random_forest": r"..\Result\Result_random_forest.csv",
+    "output_result_linear_regression": r"..\Result\Result_linear_regression.csv"
 }
 
 # Regex pattern to match emojis in text
@@ -37,7 +39,14 @@ FEATURES = [
     "score_caption",
     "time_sin",
     "time_cos",
-    "is_weekend"
+    "is_weekend",
+    # Old features for trend matching (for interpretability)
+    "caption_length",
+    "word_count",
+    "has_trend_keyword",
+    "has_trend_hashtag", 
+    "has_trend_song",
+    "hour"
 ]
 # Objective targets
 TARGETS = [
