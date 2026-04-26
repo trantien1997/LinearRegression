@@ -21,42 +21,22 @@ EMOJI_PATTERN = re.compile(
     flags=re.UNICODE
 )
 
-# List of feature columns to be used for training
-# FEATURES = [
-#     "caption_length",
-#     "word_count",
-#     "emoji_count",
-#     "hashtag_count",
-#     "followers",
-#     "has_trend_keyword",
-#     "has_trend_hashtag", 
-#     "has_trend_song", 
-#     "is_related_gameshow",
-#     "count_hashtag_famous",
-#     "score_caption",
-#     "time", 
-#     "is_weekend",
-#     "is_original_sound",
-#     "has_question_mark",
-#     "hashtag_density",
-#     "days_since_last_post",
-#     "ema_views_last_3",
-#     "avg_views_last_3_videos"
-# ]
+# High-impact feature set for multi-target prediction
 FEATURES = [
-    "followers", 
-    "ema_views_last_3", 
-    "avg_views_last_3_videos", 
+    "followers",
+    "ema_views_last_3",
+    "avg_views_last_3_videos",
+    "hist_like_rate",
     "days_since_last_post",
-    "is_related_gameshow", 
+    "is_related_gameshow",
     "count_hashtag_famous", 
     "is_original_sound",
-    "hashtag_count", 
-    "emoji_count", 
+    "hashtag_count",
+    "emoji_count",
     "hashtag_density", 
     "score_caption",
-    "time_sin", 
-    "time_cos", 
+    "time_sin",
+    "time_cos",
     "is_weekend"
 ]
 # Objective targets
