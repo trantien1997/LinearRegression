@@ -67,7 +67,7 @@ def main():
     # ---------------------------------------------------------
     model_dir = "./models"
     os.makedirs(model_dir, exist_ok=True)
-    model_path = os.path.join(model_dir, "tiktok_multi_target_model.pkl")
+    model_path = os.path.join(model_dir, "tiktok_linear_regression_multi_model.pkl")
     
     joblib.dump(pipeline, model_path)
     print(f"✅ Success: Model saved at: {model_path}")

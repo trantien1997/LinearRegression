@@ -9,7 +9,7 @@ PATHS = {
     "gameshow": r"..\Gameshow\Data_gameshow.csv",
     "output_train": r"..\DB_tiktok\tiktok_train.csv",
     "output_val": r"..\DB_tiktok\tiktok_validate.csv",
-    "output_result": r"..\Result\Result_100_42.csv"
+    "output_result": r"..\Result\Result.csv"
 }
 
 # Regex pattern to match emojis in text
@@ -27,6 +27,7 @@ FEATURES = [
     "emoji_count",
     "hashtag_count",
     "followers",
+    "comments",
     "has_trend_keyword",
     "has_trend_hashtag", 
     "has_trend_song", 

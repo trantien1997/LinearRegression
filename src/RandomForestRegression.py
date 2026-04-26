@@ -90,7 +90,7 @@ def main():
     # ---------------------------------------------------------
     model_dir = "./models"
     os.makedirs(model_dir, exist_ok=True)
-    model_path = os.path.join(model_dir, "tiktok_rf_multi_model.pkl")
+    model_path = os.path.join(model_dir, "tiktok_random_forest_multi_model.pkl")
     
     joblib.dump(best_model, model_path)
     print(f"✅ Success: Model saved at: {model_path}")
