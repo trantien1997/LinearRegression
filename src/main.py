@@ -1,182 +1,191 @@
-# main.py
-import os
-import joblib
-import warnings
 import pandas as pd
 import numpy as np
+import joblib
+import os
+import warnings
 import matplotlib.pyplot as plt
 import seaborn as sns
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error, mean_absolute_percentage_error
-from xgboost import XGBRegressor
-from sklearn.multioutput import MultiOutputRegressor
 
-# Custom imports
-from constants import PATHS, TARGETS, FEATURES
+from sklearn.model_selection import train_test_split, RandomizedSearchCV
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.pipeline import Pipeline
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+
+from constants import PATHS, FEATURES, TARGETS
 from processor import TikTokDataProcessor
 
 warnings.filterwarnings("ignore")
 
-class UnifiedTikTokModule:
+def plot_feature_importance_pie(features, importances, save_path):
     """
-    Consolidated Expert System using Multi-Output Regression.
-    Provides a single interface for Likes, Views, and Shares.
+    Generates a professional Donut Chart for Feature Importance.
     """
-    def __init__(self, model_path="models/xgboost_multioutput_model.pkl"):
-        self.model_path = model_path
-        self.model = None
-        self.metrics_report = []
-        self.feature_importance_df = None
-        self.detailed_predictions = None
+    df_fi = pd.DataFrame({'Feature': features, 'Importance': importances})
+    df_fi = df_fi.sort_values(by='Importance', ascending=False)
 
-    def train(self, X_train, y_train, X_val, y_val):
-        """
-        Trains the Unified Expert Model, computes error metrics, 
-        extracts feature importance and prepares detailed results.
-        """
-        print("[Unified Module] Starting specialized Multi-Target training...")
-        
-        base_params = {
-            'n_estimators': 1500,
-            'learning_rate': 0.008,
-            'max_depth': 6,
-            'gamma': 0.5,
-            'reg_alpha': 2.0,
-            'reg_lambda': 5.0,
-            'subsample': 0.8,
-            'colsample_bytree': 0.8,
-            'random_state': 42,
-            'n_jobs': -1
-        }
+    top_n = 8
+    df_plot = df_fi.head(top_n).copy()
+    others_val = df_fi.iloc[top_n:]['Importance'].sum()
+    
+    if others_val > 0:
+        new_row = pd.DataFrame([{"Feature": "Others", "Importance": others_val}])
+        df_plot = pd.concat([df_plot, new_row], ignore_index=True)
 
-        self.model = MultiOutputRegressor(XGBRegressor(**base_params))
-        self.model.fit(X_train, y_train)
+    plt.figure(figsize=(10, 7))
+    colors = sns.color_palette("pastel", len(df_plot))
+    
+    wedges, texts, autotexts = plt.pie(
+        df_plot['Importance'], 
+        labels=df_plot['Feature'], 
+        autopct='%1.1f%%', 
+        startangle=140, 
+        colors=colors,
+        pctdistance=0.85,
+        explode=[0.03] * len(df_plot)
+    )
 
-        # Performance Evaluation
-        y_pred = self.model.predict(X_val)
-        
-        # Prepare dictionary for detailed CSV export
-        results_dict = {}
+    centre_circle = plt.Circle((0,0), 0.70, fc='white')
+    fig = plt.gcf()
+    fig.gca().add_artist(centre_circle)
 
-        for i, target in enumerate(TARGETS):
-            actual = y_val.iloc[:, i].values
-            pred = y_pred[:, i]
-            
-            # Metric Calculation for Report
-            r2 = r2_score(actual, pred)
-            mae = mean_absolute_error(actual, pred)
-            rmse = np.sqrt(mean_squared_error(actual, pred))
-            
-            # Row-level % Error: |actual - pred| / (actual + 1) * 100
-            # (We use actual+1 to avoid division by zero)
-            error_pct = (np.abs(actual - pred) / (actual + 1)) * 100
-            
-            self.metrics_report.append({
-                "Target Metric": target,
-                "R2 Score": f"{r2:.5f}",
-                "MAE": f"{mae:.4f}",
-                "RMSE": f"{rmse:.4f}",
-                "Avg Error (%)": f"{error_pct.mean():.4f}%",
-                "Max Error (%)": f"{error_pct.max():.4f}%"
-            })
-
-            # Store columns for CSV
-            results_dict[f"{target}_actual"] = actual
-            results_dict[f"{target}_predicted"] = pred
-            results_dict[f"{target}_error_pct"] = error_pct
-
-        self.detailed_predictions = pd.DataFrame(results_dict)
-
-        # Calculate Average Feature Importance across all targets
-        importances = np.mean([est.feature_importances_ for est in self.model.estimators_], axis=0)
-        self.feature_importance_df = pd.DataFrame({
-            "Feature": FEATURES,
-            "Contribution": importances
-        }).sort_values(by="Contribution", ascending=False)
-
-        # Persist model
-        os.makedirs(os.path.dirname(self.model_path), exist_ok=True)
-        joblib.dump(self.model, self.model_path)
-        print(f"[Unified Module] Master model saved at: {self.model_path}")
-
-    def save_results_to_csv(self, output_path):
-        """Saves row-level predictions and errors to CSV."""
-        if self.detailed_predictions is not None:
-            os.makedirs(os.path.dirname(output_path), exist_ok=True)
-            self.detailed_predictions.to_csv(output_path, index=False, encoding="utf-8-sig")
-            print(f"[System] Detailed predictions saved to '{output_path}'")
-
-    def plot_feature_importance(self):
-        """Generates a professional Donut Chart for Feature Importance."""
-        if self.feature_importance_df is None: return
-
-        top_n = 8
-        df_plot = self.feature_importance_df.head(top_n).copy()
-        others_val = self.feature_importance_df.iloc[top_n:]["Contribution"].sum()
-        
-        if others_val > 0:
-            df_plot = pd.concat([df_plot, pd.DataFrame([{"Feature": "Others", "Contribution": others_val}])], ignore_index=True)
-
-        plt.figure(figsize=(12, 8))
-        colors = sns.color_palette("viridis", len(df_plot))
-        
-        plt.pie(df_plot["Contribution"], labels=df_plot["Feature"], autopct='%1.1f%%', 
-                startangle=140, colors=colors, pctdistance=0.85, explode=[0.05] * len(df_plot))
-        
-        centre_circle = plt.Circle((0,0), 0.70, fc='white')
-        plt.gcf().gca().add_artist(centre_circle)
-        plt.title("Global Feature Importance Distribution (%)", fontsize=15, pad=20)
-        plt.axis('equal') 
-        plt.tight_layout()
-        plt.savefig("output/feature_importance_pie_xgboost.png", dpi=300)
-        print("[System] Pie chart saved as 'output/feature_importance_pie_xgboost.png'")
-        plt.show()
-
-    def display_report(self):
-        """Outputs a clean performance summary."""
-        print("\n" + "="*95)
-        print("📊 UNIFIED MULTI-TARGET SYSTEM PERFORMANCE REPORT")
-        print("="*95)
-        print(pd.DataFrame(self.metrics_report).to_string(index=False))
-        print("="*95)
+    plt.setp(autotexts, size=10, weight="bold")
+    plt.title("Global Feature Contribution Analysis (%)", fontsize=15, pad=20)
+    
+    plt.axis('equal') 
+    plt.tight_layout()
+    
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    plt.savefig(save_path, dpi=300)
+    print(f"\n✅ Success: Pie chart saved to: {save_path}")
+    plt.show()
 
 def main():
-    # 1. Pipeline Initialization
+    # ---------------------------------------------------------
+    # STEP 1: DATA LOADING & PREPROCESSING
+    # ---------------------------------------------------------
+    print(">>> Status: Loading raw data and processing features...")
     df_raw = pd.read_csv(PATHS["main_data"])
-    processor = TikTokDataProcessor()
-    processor.load_trends()
-    df_featured = processor.process_features(df_raw)
 
-    # 2. Data Preparation
-    train_df, val_df = train_test_split(df_featured, test_size=0.2, random_state=42)
-    X_train, X_val = train_df[FEATURES].fillna(0), val_df[FEATURES].fillna(0)
+    proc = TikTokDataProcessor()
+    proc.load_trends()
+    df_featured = proc.process_features(df_raw)
+
+    # ---------------------------------------------------------
+    # STEP 2: DATA SPLITTING
+    # ---------------------------------------------------------
+    print(">>> Status: Splitting data into Train and Validation sets...")
+    train_df, val_df = train_test_split(
+        df_featured,
+        test_size=0.2,
+        random_state=42
+    )
+
+    # ---------------------------------------------------------
+    # STEP 3: FEATURE & TARGET PREPARATION
+    # ---------------------------------------------------------
+    X_train = train_df[FEATURES].fillna(0)
+    X_val = val_df[FEATURES].fillna(0)
+
+    print(f">>> Status: Applying Log transformation to targets: {TARGETS}")
+    y_train = np.log1p(train_df[TARGETS]) 
+    y_val_actual = val_df[TARGETS] 
+
+    # ---------------------------------------------------------
+    # STEP 4: MULTI-TARGET RANDOM FOREST SEARCH
+    # ---------------------------------------------------------
+    pipeline = Pipeline([
+        ("rf", RandomForestRegressor(random_state=42, n_jobs=-1))
+    ])
+
+    param_distributions = {
+        "rf__n_estimators": [100, 300, 500],
+        "rf__max_depth": [10, 20, 30, None],
+        "rf__min_samples_split": [2, 5, 10],
+        "rf__min_samples_leaf": [1, 2, 4],
+        "rf__max_features": ["sqrt", 1.0]
+    }
+
+    print(">>> Status: Starting Randomized Hyperparameter Search (n_iter=50)...")
+    search = RandomizedSearchCV(
+        estimator=pipeline,
+        param_distributions=param_distributions,
+        n_iter=50,
+        cv=3,
+        scoring="r2",
+        n_jobs=-1,
+        verbose=1,
+        random_state=42
+    )
+
+    search.fit(X_train, y_train)
+    best_model = search.best_estimator_
+
+    # ---------------------------------------------------------
+    # STEP 5: MODEL SERIALIZATION & EVALUATION
+    # ---------------------------------------------------------
+    model_dir = "./models"
+    os.makedirs(model_dir, exist_ok=True)
+    joblib.dump(best_model, os.path.join(model_dir, "tiktok_random_forest_multi_model.pkl"))
+
+    print("\n" + "="*50)
+    print("MODEL EVALUATION REPORT")
+    print("="*50)
     
-    # Save Train and Validation sets to CSV ---
-    print(f"[System] Saving processed datasets to CSV...")
-    # Ensure directories exist
-    os.makedirs(os.path.dirname(PATHS["output_train"]), exist_ok=True)
-    os.makedirs(os.path.dirname(PATHS["output_val"]), exist_ok=True)
+    y_pred_log = best_model.predict(X_val)
+    y_pred_original = np.expm1(y_pred_log)
+    y_pred_original = np.maximum(y_pred_original, 0) # Ensure no negative values
+    y_pred_df = pd.DataFrame(y_pred_original, columns=TARGETS, index=val_df.index)
 
-    # Save files (using utf-8-sig to support Vietnamese characters in captions)
-    train_df.to_csv(PATHS["output_train"], index=False, encoding="utf-8-sig")
-    val_df.to_csv(PATHS["output_val"], index=False, encoding="utf-8-sig")
-    print(f"✅ Train set saved: {PATHS['output_train']}")
-    print(f"✅ Val set saved: {PATHS['output_val']}")
-    # --------------------------------------------------
+    # Dictionary to store data for CSV export
+    evaluation_results = {}
 
-    # Use log1p for training as usual
-    y_train = train_df[TARGETS]
-    y_val = val_df[TARGETS]
+    for target in TARGETS:
+        actual = y_val_actual[target].values
+        predicted = y_pred_df[target].values
 
-    # 3. Module Execution
-    expert_system = UnifiedTikTokModule()
-    expert_system.train(X_train, y_train, X_val, y_val)
+        # Metric calculation for Console
+        mae = mean_absolute_error(actual, predicted)
+        rmse = np.sqrt(mean_squared_error(actual, predicted))
+        r2 = r2_score(actual, predicted)
+        
+        # Row-level percentage error: |actual - predicted| / (actual + 1) * 100
+        error_pct = (np.abs(actual - predicted) / (actual + 1)) * 100
 
-    # 4. Final Output, CSV Export & Visualization
-    expert_system.display_report()
-    expert_system.save_results_to_csv(PATHS["output_result_xgboost"])
-    expert_system.plot_feature_importance()
+        print(f"\nTarget Variable: [{target}]")
+        print(f"  - MAE:   {mae:.4f}")
+        print(f"  - RMSE:  {rmse:.4f}")
+        print(f"  - R2:    {r2:.4f}")
+        print(f"  - Error: {error_pct.mean():.2f}%")
+
+        # Storing for Step 7 CSV export
+        evaluation_results[f"{target}_actual"] = actual
+        evaluation_results[f"{target}_predicted"] = predicted
+        evaluation_results[f"{target}_error_pct"] = error_pct
+
+    # ---------------------------------------------------------
+    # STEP 6: FEATURE IMPORTANCE & VISUALIZATION
+    # ---------------------------------------------------------
+    print("\n>>> Status: Extracting & Plotting Feature Importances...")
+    rf_step = best_model.named_steps["rf"]
+    importances = rf_step.feature_importances_
+    
+    feat_imp = sorted(zip(FEATURES, importances), key=lambda x: x[1], reverse=True)
+    print("\nTop 10 Global Features (Contribution %):")
+    for feat, imp in feat_imp[:10]:
+        print(f"  - {feat}: {imp*100:.2f}%")
+
+    plot_feature_importance_pie(FEATURES, importances, "./output/feature_importance_pie_random_forest.png")
+
+    # ---------------------------------------------------------
+    # STEP 7: EXPORT RESULTS (WITH DETAILED % ERROR)
+    # ---------------------------------------------------------
+    result_df = pd.DataFrame(evaluation_results)
+    
+    # Ensure the output directory exists
+    os.makedirs(os.path.dirname(PATHS["output_result_random_forest"]), exist_ok=True)
+    
+    result_df.to_csv(PATHS["output_result_random_forest"], index=False, encoding="utf-8-sig")
+    print(f"\n✅ Success: Detailed predictions with % error saved to: {PATHS['output_result_random_forest']}")
 
 if __name__ == "__main__":
-    os.makedirs("output", exist_ok=True)
     main()
