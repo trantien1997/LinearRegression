@@ -1,147 +1,128 @@
+# main.py
 import os
-import optuna
+import joblib
+import warnings
 import pandas as pd
 import numpy as np
-import joblib  # Library to save the model
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error, mean_absolute_percentage_error
 from xgboost import XGBRegressor
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
+from sklearn.multioutput import MultiOutputRegressor
 
-# Import configuration variables and data processing module
-from constants import PATHS, FEATURES, TARGETS
+# Custom imports
+from constants import PATHS, TARGETS, FEATURES
 from processor import TikTokDataProcessor
 
-# ==================== OPTUNA OBJECTIVE FUNCTION ====================
-def objective(trial, X_train, y_train, X_val, y_val):
-    # Define the hyperparameter search space
-    params = {
-        'n_estimators': trial.suggest_int('n_estimators', 500, 1500),
-        'max_depth': trial.suggest_int('max_depth', 4, 10),
-        'learning_rate': trial.suggest_float('learning_rate', 0.01, 0.1, log=True),
-        'subsample': trial.suggest_float('subsample', 0.7, 1.0),
-        'colsample_bytree': trial.suggest_float('colsample_bytree', 0.7, 1.0),
-        'min_child_weight': trial.suggest_int('min_child_weight', 1, 10),
-        'reg_alpha': trial.suggest_float('reg_alpha', 0.0, 2.0),
-        'reg_lambda': trial.suggest_float('reg_lambda', 0.0, 5.0),
-        'random_state': 42,
-    }
-    
-    # Initialize and train the model with trial parameters
-    model = XGBRegressor(**params)
-    model.fit(X_train, y_train, verbose=False)
-    
-    # Predict on the validation set
-    pred_val = model.predict(X_val)
-    
-    # Calculate the average R2 score across all 3 targets (Views, Likes, Shares)
-    r2_avg = r2_score(y_val, pred_val)
-    
-    return r2_avg # Return average R2 for Optuna to maximize
+warnings.filterwarnings("ignore")
 
-# ==================== MAIN FUNCTION ====================
-def main():
-    print("1. Loading and processing raw data...")
-    df_raw = pd.read_csv(PATHS["main_data"])
+class UnifiedTikTokModule:
+    """
+    Consolidated Expert System using Multi-Output Regression.
+    Provides a single interface for Likes, Views, and Shares.
+    """
+    def __init__(self, model_path="models/xgboost_multioutput_model.pkl"):
+        self.model_path = model_path
+        self.model = None
+        self.metrics_report = []
 
-    # Feature Engineering
-    proc = TikTokDataProcessor()
-    proc.load_trends()
-    df_featured = proc.process_features(df_raw)
-
-    print("2. Splitting data into Train and Validation sets...")
-    train_df, val_df = train_test_split(
-        df_featured, test_size=0.2, random_state=42
-    )
-
-    # Fill missing values with 0 (if any)
-    X_train = train_df[FEATURES].fillna(0)
-    X_val   = val_df[FEATURES].fillna(0)
-    y_train = train_df[TARGETS]
-    y_val   = val_df[TARGETS]
-
-    # ==================== OPTUNA TUNING ====================
-    print("\n3. Starting Optuna Hyperparameter Tuning for Multi-Target...")
-    study = optuna.create_study(direction='maximize', sampler=optuna.samplers.TPESampler(seed=42))
-    
-    # Run 30 trials (can be increased to 50-100 for better optimization)
-    study.optimize(lambda trial: objective(trial, X_train, y_train, X_val, y_val), n_trials=30)
-
-    print(f"\nBest Average R2 Score: {study.best_value:.5f}")
-    
-    # ==================== TRAINING FINAL MODEL ====================
-    print("\n4. Training the final model with the best parameters...")
-    best_params = study.best_params
-    best_params['random_state'] = 42
-
-    final_model = XGBRegressor(**best_params)
-    final_model.fit(X_train, y_train)
-
-    # ==================== A. EXTRACT FEATURE IMPORTANCES ====================
-    print("\n=== 5. Extracting Feature Importances ===")
-    
-    # Get feature importance array from the model
-    importances = final_model.feature_importances_
-    
-    # Create a DataFrame and convert to percentage format
-    fi_df = pd.DataFrame({
-        'Feature': FEATURES,
-        'Importance_%': importances * 100
-    }).sort_values(by='Importance_%', ascending=False)
-    
-    # Display to console
-    print(fi_df.to_string(index=False, float_format="%.2f%%"))
-    
-    # Save feature importances to a separate CSV file
-    fi_path = PATHS["output_result"].replace(".csv", "_feature_importances.csv")
-    fi_df.to_csv(fi_path, index=False, encoding="utf-8-sig")
-
-    # ==================== B. CALCULATE METRICS & ERRORS ====================
-    print("\n=== 6. Calculating Detailed Metrics & Errors ===")
-    y_pred = final_model.predict(X_val)
-    results = {}
-    metrics = []
-
-    # Calculate separately for each target variable
-    for i, target in enumerate(TARGETS):
-        y_actual_col = y_val.iloc[:, i]
-        y_pred_col = y_pred[:, i]
-
-        mae = mean_absolute_error(y_actual_col, y_pred_col)
-        rmse = np.sqrt(mean_squared_error(y_actual_col, y_pred_col))
-        r2 = r2_score(y_actual_col, y_pred_col)
-
-        print(f"Target: {target:15s} -> MAE: {mae:.4f} | RMSE: {rmse:.4f} | R2: {r2:.4f}")
-
-        # Record actual and predicted values
-        results[f"{target}_actual"] = y_actual_col.values
-        results[f"{target}_predict"] = y_pred_col
+    def train(self, X_train, y_train, X_val, y_val):
+        """
+        Trains the Unified Expert Model and computes comprehensive error metrics.
+        Includes Max Error expressed as a percentage.
+        """
+        print("[Unified Module] Starting specialized Multi-Target training...")
         
-        # Calculate Accuracy % for each data point
-        accuracy_percent = (1 - abs(y_actual_col - y_pred_col) / (y_actual_col + 1)) * 100
-        results[f"{target}_accuracy_%"] = accuracy_percent.values
+        # Hyperparameters optimized for balanced multi-output stability
+        base_params = {
+            'n_estimators': 1500,
+            'learning_rate': 0.008,
+            'max_depth': 6,
+            'gamma': 0.5,
+            'reg_alpha': 2.0,
+            'reg_lambda': 5.0,
+            'subsample': 0.8,
+            'colsample_bytree': 0.8,
+            'random_state': 42,
+            'n_jobs': -1
+        }
 
-        # Store summarized metrics
-        metrics.append({"Target": target, "MAE": mae, "RMSE": rmse, "R2": r2})
+        # MultiOutputRegressor ensures each target in TARGETS is predicted simultaneously
+        self.model = MultiOutputRegressor(XGBRegressor(**base_params))
+        self.model.fit(X_train, y_train)
 
-    # ==================== C. SAVE RESULTS AND MODEL ====================
-    print("\n7. Exporting result files and saving the model...")
+        # Predicting for validation
+        y_pred = self.model.predict(X_val)
+        
+        # Comprehensive Error Analysis
+        for i, target in enumerate(TARGETS):
+            actual = y_val.iloc[:, i]
+            pred = y_pred[:, i]
+            
+            # Metric Calculation
+            r2 = r2_score(actual, pred)
+            mae = mean_absolute_error(actual, pred)
+            mse = mean_squared_error(actual, pred)
+            rmse = np.sqrt(mse)
+            
+            # MAPE (Mean Absolute Percentage Error)
+            mape = mean_absolute_percentage_error(actual + 1, pred + 1) 
+            
+            # Max Error as a Percentage (MaxAPE - Maximum Absolute Percentage Error)
+            # Calculated relative to (actual + 1) to avoid division by zero
+            max_error_pct = np.max(np.abs(actual - pred) / (actual + 1)) * 100
+            
+            self.metrics_report.append({
+                "Target Metric": target,
+                "R2 Score": f"{r2:.5f}",
+                "MAE": f"{mae:.4f}",
+                "RMSE": f"{rmse:.4f}",
+                "MAPE (%)": f"{mape * 100:.4f}%",
+                "Max Error (%)": f"{max_error_pct:.4f}%"
+            })
+
+        # Persist model
+        os.makedirs(os.path.dirname(self.model_path), exist_ok=True)
+        joblib.dump(self.model, self.model_path)
+        print(f"[Unified Module] Master model saved at: {self.model_path}")
+
+    def display_report(self):
+        """
+        Outputs a clean, instruction-ready performance summary.
+        """
+        print("\n" + "="*95)
+        print("📊 UNIFIED MULTI-TARGET SYSTEM PERFORMANCE REPORT")
+        print("="*95)
+        report_df = pd.DataFrame(self.metrics_report)
+        print(report_df.to_string(index=False))
+        print("="*95)
+        print("💡 Note: Percentage errors are relative to log1p-transformed scales.")
+        print("✅ System Ready for Inference.\n")
+
+def main():
+    # 1. Pipeline Initialization
+    print("[System] Loading data and trends reference...")
+    df_raw = pd.read_csv(PATHS["main_data"])
+    processor = TikTokDataProcessor()
+    processor.load_trends()
     
-    # 7.1 Save detailed prediction file
-    pd.DataFrame(results).to_csv(PATHS["output_result"], index=False, encoding="utf-8-sig")
-    
-    # 7.2 Save error metrics summary file
-    metrics_path = PATHS["output_result"].replace(".csv", "_metrics_error.csv")
-    pd.DataFrame(metrics).to_csv(metrics_path, index=False, encoding="utf-8-sig")
+    # Feature Engineering
+    df_featured = processor.process_features(df_raw)
 
-    # 7.3 Create 'models' directory and save the model
-    base_dir = os.path.dirname(PATHS["output_result"]) # Get the directory path of the output result file
-    models_dir = os.path.join(base_dir, "models")
-    os.makedirs(models_dir, exist_ok=True) # Automatically create 'models' directory if it doesn't exist
-
-    model_path = os.path.join(models_dir, "xgboost_multi_target_model.pkl")
-    joblib.dump(final_model, model_path)
+    # 2. Data Preparation
+    print("[System] Preparing Train/Val datasets (80/20 split)...")
+    train_df, val_df = train_test_split(df_featured, test_size=0.2, random_state=42)
     
-    print(f"Completed! Model successfully saved at:\n -> {model_path}")
+    X_train = train_df[FEATURES].fillna(0)
+    X_val = val_df[FEATURES].fillna(0)
+    y_train = train_df[TARGETS]
+    y_val = val_df[TARGETS]
+
+    # 3. Module Execution
+    expert_system = UnifiedTikTokModule()
+    expert_system.train(X_train, y_train, X_val, y_val)
+
+    # 4. Final Output
+    expert_system.display_report()
 
 if __name__ == "__main__":
     main()
