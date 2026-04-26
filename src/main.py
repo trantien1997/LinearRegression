@@ -1,149 +1,106 @@
+# main.py
+import os, joblib, warnings
 import pandas as pd
 import numpy as np
-import joblib
-import os
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
+from xgboost import XGBRegressor
 
-from sklearn.model_selection import train_test_split, RandomizedSearchCV
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.pipeline import Pipeline
-from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
-
-from constants import PATHS, FEATURES, TARGETS
+from constants import PATHS, TARGETS
 from processor import TikTokDataProcessor
 
-def main():
-    # ---------------------------------------------------------
-    # STEP 1: DATA LOADING & PREPROCESSING
-    # ---------------------------------------------------------
-    print(">>> Status: Loading raw data and processing features...")
-    df_raw = pd.read_csv(PATHS["main_data"])
+# Tắt các cảnh báo không cần thiết để log sạch hơn
+warnings.filterwarnings("ignore")
 
+SELECTED_FEATURES = [
+    "followers", "ema_views_last_3", "avg_views_last_3_videos", "hist_like_rate",
+    "days_since_last_post", "is_related_gameshow", "count_hashtag_famous", 
+    "is_original_sound", "hashtag_count", "emoji_count", "hashtag_density", 
+    "score_caption", "time_sin", "time_cos", "is_weekend"
+]
+
+class TikTokExpertSystem:
+    """Hệ thống module chuyên gia dự đoán đa mục tiêu"""
+    def __init__(self, model_dir="models"):
+        self.model_dir = model_dir
+        self.models = {}
+        self.metrics = []
+        os.makedirs(self.model_dir, exist_ok=True)
+
+    def train_expert(self, target, X_train, y_train, X_val, y_val, params):
+        """Huấn luyện một module chuyên gia cho một Target cụ thể"""
+        model = XGBRegressor(**params)
+        model.fit(X_train, y_train)
+        
+        # Dự đoán và tính toán hệ số
+        y_pred = model.predict(X_val)
+        r2 = r2_score(y_val, y_pred)
+        mae = mean_absolute_error(y_val, y_pred)
+        rmse = np.sqrt(mean_squared_error(y_val, y_pred))
+        
+        # Lưu kết quả
+        self.models[target] = model
+        self.metrics.append({
+            "Target": target,
+            "R2": f"{r2:.5f}",
+            "MAE": f"{mae:.4f}",
+            "RMSE": f"{rmse:.4f}"
+        })
+        
+        # Lưu file model
+        joblib.dump(model, os.path.join(self.model_dir, f"expert_{target}.pkl"))
+
+    def show_final_report(self):
+        """In bảng thông báo cuối cùng sạch sẽ"""
+        print("\n" + "="*60)
+        print("📊 FINAL MODULE SYSTEM PERFORMANCE REPORT")
+        print("="*60)
+        report_df = pd.DataFrame(self.metrics)
+        print(report_df.to_string(index=False))
+        print("="*60)
+        print(f"✅ All models saved in: {self.model_dir}\n")
+
+def main():
+    # 1. Khởi tạo Processor và Manager
+    print("[System] Loading data and initializing experts...")
+    df_raw = pd.read_csv(PATHS["main_data"])
     proc = TikTokDataProcessor()
     proc.load_trends()
-    df_featured = proc.process_features(df_raw)
-
-    # ---------------------------------------------------------
-    # STEP 2: DATA SPLITTING
-    # ---------------------------------------------------------
-    print(">>> Status: Splitting data into Train and Validation sets...")
-    train_df, val_df = train_test_split(
-        df_featured,
-        test_size=0.2,
-        random_state=42
-    )
-
-    train_df.to_csv(PATHS["output_train"], index=False, encoding="utf-8-sig")
-    val_df.to_csv(PATHS["output_val"], index=False, encoding="utf-8-sig")
-
-    # ---------------------------------------------------------
-    # STEP 3: FEATURE & TARGET PREPARATION
-    # ---------------------------------------------------------
-    X_train = train_df[FEATURES].fillna(0)
-    X_val = val_df[FEATURES].fillna(0)
-
-    # Apply Log Transformation (Crucial for right-skewed data)
-    print(f">>> Status: Applying Log transformation to targets: {TARGETS}")
-    y_train = np.log1p(train_df[TARGETS]) 
-    y_val_actual = val_df[TARGETS] 
-
-    # ---------------------------------------------------------
-    # STEP 4: MULTI-TARGET RANDOM FOREST WITH RANDOMIZED SEARCH
-    # ---------------------------------------------------------
-    print(f"\n>>> Status: Configuring Multi-target Random Forest Pipeline...")
     
-    # Note: Random Forest doesn't strictly need StandardScaler, 
-    # but keeping it in Pipeline is safe and standard practice.
-    pipeline = Pipeline([
-        ("rf", RandomForestRegressor(random_state=42, n_jobs=-1))
-    ])
+    # Xử lý Feature (Tắt log chi tiết bên trong nếu muốn sạch hơn)
+    df_featured = proc.process_features(df_raw)
+    
+    # 2. Chia dữ liệu
+    train_df, val_df = train_test_split(df_featured, test_size=0.2, random_state=42)
+    X_train = train_df[SELECTED_FEATURES].fillna(0)
+    X_val = val_df[SELECTED_FEATURES].fillna(0)
 
-    # Smart, restricted parameter grid
-    param_distributions = {
-        "rf__n_estimators": [100, 300, 500],
-        "rf__max_depth": [10, 20, 30, None],
-        "rf__min_samples_split": [2, 5, 10],
-        "rf__min_samples_leaf": [1, 2, 4],
-        "rf__max_features": ["sqrt", "log2", 1.0]
+    manager = TikTokExpertSystem()
+
+    # 3. Định nghĩa tham số tối ưu (Lấy từ kết quả Optuna tốt nhất của bạn)
+    # Lưu ý: Bạn có thể chạy lại Optuna trước đó để lấy các bộ params này
+    configs = {
+        "likes_log1p": {
+            'n_estimators': 1223, 'learning_rate': 0.0058, 'max_depth': 7, 
+            'gamma': 0.49, 'reg_alpha': 3.14, 'reg_lambda': 2.17, 'random_state': 42
+        },
+        "views_log1p": {
+            'n_estimators': 1703, 'learning_rate': 0.0061, 'max_depth': 5, 
+            'gamma': 0.77, 'reg_alpha': 2.17, 'reg_lambda': 2.70, 'random_state': 42
+        },
+        "shares_log1p": {
+            'n_estimators': 1500, 'learning_rate': 0.01, 'max_depth': 5, 
+            'random_state': 42 # Shares khó lên nên dùng param cơ bản hoặc tune riêng
+        }
     }
 
-    # Use RandomizedSearchCV instead of GridSearchCV to prevent infinite runtimes
-    print(">>> Status: Starting Randomized Hyperparameter Search (Max 50 iterations)...")
-    search = RandomizedSearchCV(
-        estimator=pipeline,
-        param_distributions=param_distributions,
-        n_iter=50, # Chỉ thử 50 tổ hợp ngẫu nhiên để tiết kiệm thời gian
-        cv=3,
-        scoring="r2",
-        n_jobs=-1,
-        verbose=2,
-        random_state=42
-    )
-
-    search.fit(X_train, y_train)
-
-    best_model = search.best_estimator_
-    print("\n✅ Success: Best Parameters Found:")
-    print(search.best_params_)
-
-    # ---------------------------------------------------------
-    # STEP 5: MODEL SERIALIZATION (SAVE)
-    # ---------------------------------------------------------
-    model_dir = "./models"
-    os.makedirs(model_dir, exist_ok=True)
-    model_path = os.path.join(model_dir, "tiktok_random_forest_multi_model.pkl")
-    
-    joblib.dump(best_model, model_path)
-    print(f"✅ Success: Model saved at: {model_path}")
-
-    # ---------------------------------------------------------
-    # STEP 6: EVALUATION & INVERSE TRANSFORMATION
-    # ---------------------------------------------------------
-    print("\n" + "="*50)
-    print("MODEL EVALUATION REPORT")
-    print("="*50)
-    
-    y_pred_log = best_model.predict(X_val)
-    y_pred_original = np.expm1(y_pred_log)
-    y_pred_original = np.maximum(y_pred_original, 0)
-
-    y_pred_df = pd.DataFrame(y_pred_original, columns=TARGETS, index=val_df.index)
-    evaluation_results = {}
-
+    # 4. Huấn luyện từng chuyên gia
     for target in TARGETS:
-        actual = y_val_actual[target]
-        predicted = y_pred_df[target]
+        params = configs.get(target, {'n_estimators': 1000, 'learning_rate': 0.01})
+        manager.train_expert(target, X_train, train_df[target], X_val, val_df[target], params)
 
-        mae = mean_absolute_error(actual, predicted)
-        rmse = np.sqrt(mean_squared_error(actual, predicted))
-        r2 = r2_score(actual, predicted)
-        mape = (abs(actual - predicted) / (actual + 1)).mean() * 100
-
-        print(f"\nTarget Variable: [{target}]")
-        print(f"  - MAE:   {mae:.4f}")
-        print(f"  - RMSE:  {rmse:.4f}")
-        print(f"  - R2:    {r2:.4f}")
-        print(f"  - Error: {mape:.2f}%")
-
-        evaluation_results[f"{target}_actual"] = actual.values
-        evaluation_results[f"{target}_predicted"] = predicted.values
-        evaluation_results[f"{target}_error_pct"] = (abs(actual - predicted) / (actual + 1)) * 100
-
-    # Feature Importance Printing (Averaged across all 3 targets in multi-target RF)
-    print("\n>>> Status: Extracting Global Feature Importances...")
-    rf_step = best_model.named_steps["rf"]
-    importances = rf_step.feature_importances_
-    
-    # Sort and print feature importances
-    feat_imp = sorted(zip(FEATURES, importances), key=lambda x: x[1], reverse=True)
-    for feat, imp in feat_imp[:10]: # Print top 10 to avoid screen clutter
-        print(f"  - {feat}: {imp:.4f}")
-
-    # ---------------------------------------------------------
-    # STEP 7: EXPORT PREDICTIONS
-    # ---------------------------------------------------------
-    result_df = pd.DataFrame(evaluation_results)
-    result_df.to_csv(PATHS["output_result"], index=False, encoding="utf-8-sig")
-    print(f"\n✅ Success: Detailed predictions saved to: {PATHS['output_result']}")
+    # 5. Thông báo kết quả cuối cùng
+    manager.show_final_report()
 
 if __name__ == "__main__":
     main()

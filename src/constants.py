@@ -7,6 +7,7 @@ PATHS = {
     "song_trend": r"..\DB_trend_song_tiktok\songs_rank_7_30_120_12-01-2026.csv",
     "hashtag_trend": r"..\DB_trend_hastag_tiktok\hashtags_rank_7_30_120_21-04-2026.csv",
     "gameshow": r"..\Gameshow\Data_gameshow.csv",
+    "kol_to_gameshow": r"..\Gameshow\kol_to_gameshows.csv",
     "output_train": r"..\DB_tiktok\tiktok_train.csv",
     "output_val": r"..\DB_tiktok\tiktok_validate.csv",
     "output_result": r"..\Result\Result.csv"
@@ -21,21 +22,43 @@ EMOJI_PATTERN = re.compile(
 )
 
 # List of feature columns to be used for training
+# FEATURES = [
+#     "caption_length",
+#     "word_count",
+#     "emoji_count",
+#     "hashtag_count",
+#     "followers",
+#     "has_trend_keyword",
+#     "has_trend_hashtag", 
+#     "has_trend_song", 
+#     "is_related_gameshow",
+#     "count_hashtag_famous",
+#     "score_caption",
+#     "time", 
+#     "is_weekend",
+#     "is_original_sound",
+#     "has_question_mark",
+#     "hashtag_density",
+#     "days_since_last_post",
+#     "ema_views_last_3",
+#     "avg_views_last_3_videos"
+# ]
 FEATURES = [
-    "caption_length",
-    "word_count",
-    "emoji_count",
-    "hashtag_count",
-    "followers",
-    "comments",
-    "has_trend_keyword",
-    "has_trend_hashtag", 
-    "has_trend_song", 
+    "followers", 
+    "ema_views_last_3", 
+    "avg_views_last_3_videos", 
+    "days_since_last_post",
     "is_related_gameshow", 
-    "time", 
+    "count_hashtag_famous", 
+    "is_original_sound",
+    "hashtag_count", 
+    "emoji_count", 
+    "hashtag_density", 
+    "score_caption",
+    "time_sin", 
+    "time_cos", 
     "is_weekend"
 ]
-
 # Objective targets
 TARGETS = [
     "likes_log1p",
