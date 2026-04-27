@@ -80,15 +80,25 @@ def main():
         random_state=42
     )
 
+    # Save Train and Validation sets to CSV ---
+    print(f"[System] Saving processed datasets to CSV...")
+    # Ensure directories exist
+    os.makedirs(os.path.dirname(PATHS["output_train"]), exist_ok=True)
+    os.makedirs(os.path.dirname(PATHS["output_val"]), exist_ok=True)
+
+    # Save files (using utf-8-sig to support Vietnamese characters in captions)
+    train_df.to_csv(PATHS["output_train"], index=False, encoding="utf-8-sig")
+    val_df.to_csv(PATHS["output_val"], index=False, encoding="utf-8-sig")
+    print(f"✅ Train set saved: {PATHS['output_train']}")
+    print(f"✅ Val set saved: {PATHS['output_val']}")
+    # --------------------------------------------------
+
     # ---------------------------------------------------------
     # STEP 3: FEATURE & TARGET PREPARATION
     # ---------------------------------------------------------
-    X_train = train_df[FEATURES].fillna(0)
-    X_val = val_df[FEATURES].fillna(0)
-
-    print(f">>> Status: Applying Log transformation to targets: {TARGETS}")
-    y_train = np.log1p(train_df[TARGETS]) 
-    y_val_actual = val_df[TARGETS] 
+    X_train, X_val = train_df[FEATURES].fillna(0), val_df[FEATURES].fillna(0)
+    y_train = train_df[TARGETS]
+    y_val = val_df[TARGETS]
 
     # ---------------------------------------------------------
     # STEP 4: MULTI-TARGET RANDOM FOREST SEARCH
@@ -131,16 +141,14 @@ def main():
     print("MODEL EVALUATION REPORT")
     print("="*50)
     
-    y_pred_log = best_model.predict(X_val)
-    y_pred_original = np.expm1(y_pred_log)
-    y_pred_original = np.maximum(y_pred_original, 0) # Ensure no negative values
-    y_pred_df = pd.DataFrame(y_pred_original, columns=TARGETS, index=val_df.index)
+    y_pred = best_model.predict(X_val)
+    y_pred_df = pd.DataFrame(y_pred, columns=TARGETS, index=val_df.index)
 
     # Dictionary to store data for CSV export
     evaluation_results = {}
 
     for target in TARGETS:
-        actual = y_val_actual[target].values
+        actual = y_val[target].values
         predicted = y_pred_df[target].values
 
         # Metric calculation for Console

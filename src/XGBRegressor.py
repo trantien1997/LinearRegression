@@ -124,7 +124,7 @@ class UnifiedTikTokModule:
         
         centre_circle = plt.Circle((0,0), 0.70, fc='white')
         plt.gcf().gca().add_artist(centre_circle)
-        plt.title("Global Feature Importance Distribution (%)", fontsize=15, pad=20)
+        plt.title("Global Feature Contribution Analysis (%)", fontsize=15, pad=20)
         plt.axis('equal') 
         plt.tight_layout()
         plt.savefig("output/feature_importance_pie_xgboost.png", dpi=300)
@@ -163,7 +163,6 @@ def main():
     print(f"✅ Val set saved: {PATHS['output_val']}")
     # --------------------------------------------------
 
-    # Use log1p for training as usual
     y_train = train_df[TARGETS]
     y_val = val_df[TARGETS]
 
