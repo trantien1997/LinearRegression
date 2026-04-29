@@ -14,7 +14,7 @@ from constants import PATHS, TARGETS, FEATURES
 warnings.filterwarnings("ignore")
 
 class UnifiedTikTokModule:
-    def __init__(self, model_path="models/xgboost_multioutput_model.pkl"):
+    def __init__(self, model_path="models/tiktok_xgboost_multi.pkl"):
         self.model_path = model_path
         self.model = None
         self.raw_metrics = {}
