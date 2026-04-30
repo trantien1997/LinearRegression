@@ -47,8 +47,8 @@ def run_linear_regression(X_train, y_train, X_val, y_val_actual):
     ])
     pipeline.fit(X_train, y_train)
 
-    os.makedirs("./models", exist_ok=True)
-    joblib.dump(pipeline, "./models/tiktok_linear_regression_multi.pkl")
+    os.makedirs(PATHS["output_model_linear_regression"].parent, exist_ok=True)
+    joblib.dump(pipeline, PATHS["output_model_linear_regression"])
 
     y_pred = pipeline.predict(X_val)
     y_pred_df = pd.DataFrame(y_pred, columns=TARGETS, index=X_val.index)
@@ -74,11 +74,11 @@ def run_linear_regression(X_train, y_train, X_val, y_val_actual):
         evaluation_results[f"{target}_predicted"] = predicted
         evaluation_results[f"{target}_error_pct"] = error_pct
 
-    os.makedirs(os.path.dirname(PATHS["output_result_linear_regression"]), exist_ok=True)
+    os.makedirs(PATHS["output_result_linear_regression"].parent, exist_ok=True)
     pd.DataFrame(evaluation_results).to_csv(PATHS["output_result_linear_regression"], index=False, encoding="utf-8-sig")
     
     lr_model = pipeline.named_steps["lr"]
-    plot_feature_importance_pie(FEATURES, np.mean(np.abs(lr_model.coef_), axis=0), "./output/feature_impact_pie_linear_regression.png")
+    plot_feature_importance_pie(FEATURES, np.mean(np.abs(lr_model.coef_), axis=0), PATHS["output_feature_importance_lr"])
     
     print("✅ Success: Linear Regression completed.")
     return summary_metrics

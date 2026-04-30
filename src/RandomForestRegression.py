@@ -54,8 +54,8 @@ def run_random_forest(X_train, y_train, X_val, y_val):
     search.fit(X_train, y_train)
     best_model = search.best_estimator_
 
-    os.makedirs("./models", exist_ok=True)
-    joblib.dump(best_model, "./models/tiktok_random_forest_multi.pkl")
+    os.makedirs(PATHS["output_model_random_forest"].parent, exist_ok=True)
+    joblib.dump(best_model, PATHS["output_model_random_forest"])
 
     y_pred = best_model.predict(X_val)
     y_pred_df = pd.DataFrame(y_pred, columns=TARGETS, index=X_val.index)
@@ -80,9 +80,9 @@ def run_random_forest(X_train, y_train, X_val, y_val):
         evaluation_results[f"{target}_predicted"] = predicted
         evaluation_results[f"{target}_error_pct"] = error_pct
 
-    plot_feature_importance_pie(FEATURES, best_model.named_steps["rf"].feature_importances_, "./output/feature_importance_pie_random_forest.png")
+    plot_feature_importance_pie(FEATURES, best_model.named_steps["rf"].feature_importances_, PATHS["output_feature_importance_rf"])
     
-    os.makedirs(os.path.dirname(PATHS["output_result_random_forest"]), exist_ok=True)
+    os.makedirs(PATHS["output_result_random_forest"].parent, exist_ok=True)
     pd.DataFrame(evaluation_results).to_csv(PATHS["output_result_random_forest"], index=False, encoding="utf-8-sig")
     
     print("✅ Success: Random Forest completed.")

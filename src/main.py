@@ -63,7 +63,7 @@ def main():
 
     # 4. CENTRALIZED REPORTING
     print("\n" + "="*85)
-    print(" 🏆 FINAL MODEL PERFORMANCE COMPARISON REPORT ".center(85, "="))
+    print(" 🏆 FINAL MODEL PERFORMANCE COMPARISON REPORT ".center(84, "="))
     print("="*85)
 
     all_metrics = {

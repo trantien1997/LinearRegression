@@ -14,7 +14,7 @@ from constants import PATHS, TARGETS, FEATURES
 warnings.filterwarnings("ignore")
 
 class UnifiedTikTokModule:
-    def __init__(self, model_path="models/tiktok_xgboost_multi.pkl"):
+    def __init__(self, model_path=PATHS["output_model_xgboost"]):
         self.model_path = model_path
         self.model = None
         self.raw_metrics = {}
@@ -85,8 +85,8 @@ class UnifiedTikTokModule:
         plt.title("XGBoost: Global Feature Contribution", fontsize=15, pad=20)
         plt.axis('equal') 
         plt.tight_layout()
-        os.makedirs("output", exist_ok=True)
-        plt.savefig("output/feature_importance_pie_xgboost.png", dpi=300)
+        os.makedirs(PATHS["output_feature_importance_xgb"].parent, exist_ok=True)
+        plt.savefig(PATHS["output_feature_importance_xgb"], dpi=300)
         plt.close()
 
 def run_xgboost(X_train, y_train, X_val, y_val):

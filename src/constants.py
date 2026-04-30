@@ -96,9 +96,16 @@ PATHS = {
     "kol_to_gameshow": BASE_DIR / "Gameshow" / "kol_to_gameshows.csv",
     "output_train": BASE_DIR / "DB_tiktok" / "Tiktok_train.csv",
     "output_val": BASE_DIR / "DB_tiktok" / "Tiktok_validate.csv",
+    "base_dir_models": BASE_DIR / "models",
+    "output_model_linear_regression": BASE_DIR / "models" / "tiktok_linear_regression_multi.pkl",
+    "output_model_random_forest": BASE_DIR / "models" / "tiktok_random_forest_multi.pkl",
+    "output_model_xgboost": BASE_DIR / "models" / "tiktok_xgboost_multi.pkl",
     "output_result_xgboost": BASE_DIR / "Result" / "Result_xgboost.csv",
     "output_result_random_forest": BASE_DIR / "Result" / "Result_random_forest.csv",
-    "output_result_linear_regression": BASE_DIR / "Result" / "Result_linear_regression.csv"
+    "output_result_linear_regression": BASE_DIR / "Result" / "Result_linear_regression.csv",
+    "output_feature_importance_lr": BASE_DIR / "Result" / "Feature_Importance_Linear_Regression.png",
+    "output_feature_importance_rf": BASE_DIR / "Result" / "Feature_Importance_Random_Forest.png",
+    "output_feature_importance_xgb": BASE_DIR / "Result" / "Feature_Importance_XGBoost.png"
 }
 
 # Reference variables from the Col class to define Features and Targets dynamically
